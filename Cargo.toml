@@ -1,0 +1,107 @@
+[workspace]
+members = [
+    "crates/code-types",
+    "crates/code-config",
+    "crates/code-auth",
+    "crates/code-api",
+    "crates/code-permissions",
+    "crates/code-tools",
+    "crates/code-query",
+    "crates/code-commands",
+    "crates/code-mcp",
+    "crates/code-hooks",
+    "crates/code-memory",
+    "crates/code-compact",
+    "crates/code-history",
+    "crates/code-tui",
+    "crates/code-skills",
+    "crates/code-agents",
+    "crates/code-tasks",
+    "crates/code-sdk",
+    "crates/code-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = []
+license = "MIT"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# HTTP
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Async trait support
+async-trait = "0.1"
+
+# Terminal UI
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Markdown
+pulldown-cmark = "0.12"
+
+# Syntax highlighting
+syntect = "5"
+
+# File globbing
+globset = "0.4"
+walkdir = "2"
+
+# Regex
+regex = "1"
+
+# File watching
+notify = "7"
+
+# Git
+git2 = { version = "0.19", default-features = false }
+
+# Keychain
+keyring = "3"
+
+# Windows registry (add to individual crate Cargo.toml under [target.'cfg(windows)'.dependencies])
+winreg = "0.52"
+
+# Internal crates
+code-types       = { path = "crates/code-types" }
+code-config      = { path = "crates/code-config" }
+code-auth        = { path = "crates/code-auth" }
+code-api         = { path = "crates/code-api" }
+code-permissions = { path = "crates/code-permissions" }
+code-tools       = { path = "crates/code-tools" }
+code-query       = { path = "crates/code-query" }
+code-commands    = { path = "crates/code-commands" }
+code-mcp         = { path = "crates/code-mcp" }
+code-hooks       = { path = "crates/code-hooks" }
+code-memory      = { path = "crates/code-memory" }
+code-compact     = { path = "crates/code-compact" }
+code-history     = { path = "crates/code-history" }
+code-tui         = { path = "crates/code-tui" }
+code-skills      = { path = "crates/code-skills" }
+code-agents      = { path = "crates/code-agents" }
+code-tasks       = { path = "crates/code-tasks" }
+code-sdk         = { path = "crates/code-sdk" }

@@ -1,0 +1,20 @@
+[package]
+name = "code-compact"
+description = "Context compaction: summarize-and-replace, auto-compact triggers, micro-compaction"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+reactive_compact = []
+context_collapse = []
+
+[dependencies]
+code-types = { workspace = true }
+code-api = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

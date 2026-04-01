@@ -1,0 +1,64 @@
+[package]
+name = "code-cli"
+description = "CLI binary entry point: argument parsing, bootstrap, non-interactive mode, MCP server mode"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "code"
+path = "src/main.rs"
+
+[features]
+default = []
+# Propagate feature flags to the workspace
+coordinator_mode = [
+    "code-agents/coordinator_mode",
+    "code-tools/coordinator_mode",
+]
+agent_triggers = [
+    "code-tools/agent_triggers",
+    "code-tasks/agent_triggers",
+]
+agent_triggers_remote = [
+    "agent_triggers",
+    "code-tools/agent_triggers_remote",
+]
+proactive = ["code-tools/proactive"]
+kairos = ["proactive", "code-tools/kairos", "code-tasks/kairos"]
+reactive_compact = ["code-compact/reactive_compact", "code-query/reactive_compact"]
+context_collapse = ["code-compact/context_collapse", "code-query/context_collapse"]
+transcript_classifier = []
+history_snip = ["code-history/history_snip"]
+workflow_scripts = []
+skill_search = ["code-skills/skill_search", "code-query/skill_search"]
+bridge_mode = ["code-sdk/bridge_mode", "code-commands/bridge_mode"]
+monitor_tool = ["code-tools/monitor_tool"]
+teammem = ["code-memory/teammem"]
+vim_mode = ["code-tui/vim_mode"]
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+code-auth = { workspace = true }
+code-api = { workspace = true }
+code-permissions = { workspace = true }
+code-tools = { workspace = true }
+code-query = { workspace = true }
+code-commands = { workspace = true }
+code-mcp = { workspace = true }
+code-hooks = { workspace = true }
+code-memory = { workspace = true }
+code-compact = { workspace = true }
+code-history = { workspace = true }
+code-tui = { workspace = true }
+code-skills = { workspace = true }
+code-agents = { workspace = true }
+code-tasks = { workspace = true }
+code-sdk = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

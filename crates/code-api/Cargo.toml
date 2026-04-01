@@ -1,0 +1,17 @@
+[package]
+name = "code-api"
+description = "Anthropic API client: streaming, multi-provider, retry, token counting"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+code-types = { workspace = true }
+code-auth = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }

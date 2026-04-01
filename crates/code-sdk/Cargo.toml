@@ -1,0 +1,22 @@
+[package]
+name = "code-sdk"
+description = "Agent SDK: public API types, session management, structured I/O, IDE bridge"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+bridge_mode = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+code-query = { workspace = true }
+code-history = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,29 @@
+[package]
+name = "code-query"
+description = "Query engine and pipeline: API call loop, tool orchestration, context management"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+reactive_compact = []
+context_collapse = []
+skill_search = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+code-api = { workspace = true }
+code-permissions = { workspace = true }
+code-tools = { workspace = true }
+code-hooks = { workspace = true }
+code-compact = { workspace = true }
+code-memory = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

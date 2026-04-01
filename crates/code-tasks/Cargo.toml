@@ -1,0 +1,21 @@
+[package]
+name = "code-tasks"
+description = "Background tasks: shell tasks, agent tasks, todo list management, task output streaming"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+kairos = []
+agent_triggers = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }

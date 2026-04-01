@@ -1,0 +1,20 @@
+[package]
+name = "code-memory"
+description = "Memory system: MEMORY.md loading, memdir scanning, relevance scoring, auto-extraction"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+teammem = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,18 @@
+[package]
+name = "code-auth"
+description = "Authentication: API key management, OAuth PKCE, secure credential storage"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+keyring = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

@@ -1,0 +1,26 @@
+[package]
+name = "code-tui"
+description = "Terminal UI: ratatui-based REPL, permission dialogs, streaming display, vim mode"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+vim_mode = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+code-query = { workspace = true }
+code-permissions = { workspace = true }
+code-history = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+pulldown-cmark = { workspace = true }
+syntect = { workspace = true }
+tracing = { workspace = true }

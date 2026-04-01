@@ -1,0 +1,25 @@
+[package]
+name = "code-agents"
+description = "Agent/subagent system: built-in agents, fork/resume, color management, coordinator mode"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+coordinator_mode = []
+
+[dependencies]
+code-types = { workspace = true }
+code-config = { workspace = true }
+code-query = { workspace = true }
+code-tools = { workspace = true }
+code-memory = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
