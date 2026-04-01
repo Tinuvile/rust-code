@@ -77,6 +77,9 @@ regex = "1"
 # File watching
 notify = "7"
 
+# Platform dirs (~/.claude, etc.)
+dirs-next = "2"
+
 # Git
 git2 = { version = "0.19", default-features = false }
 

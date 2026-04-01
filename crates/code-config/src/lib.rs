@@ -6,5 +6,5 @@ pub mod global;
 pub mod project;
 pub mod settings;
 pub mod mdm;
-pub mod claude_md;
+pub mod code_md;
 pub mod watcher;
