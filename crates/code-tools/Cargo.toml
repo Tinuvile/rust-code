@@ -30,3 +30,4 @@ regex = { workspace = true }
 tracing = { workspace = true }
 dirs-next = { workspace = true }
 futures-util = { workspace = true }
+reqwest = { workspace = true }

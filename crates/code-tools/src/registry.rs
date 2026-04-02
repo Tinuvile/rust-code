@@ -66,17 +66,43 @@ impl ToolRegistry {
         tools
     }
 
-    /// Construct a registry with all Tier 1 tools registered.
+    /// Construct a registry with all Tier 1 + Tier 2 tools registered.
     ///
     /// This is the default set used by `code-query` / `code-cli`.
+    /// Tier 3 tools with `is_enabled() = false` (e.g. LSP stubs) are skipped.
     pub fn with_default_tools(_cwd: &Path) -> Self {
         let mut reg = Self::new();
+
+        // Tier 1 — core file/shell tools
         reg.register(Box::new(crate::bash::BashTool));
         reg.register(Box::new(crate::file_read::FileReadTool));
         reg.register(Box::new(crate::file_write::FileWriteTool));
         reg.register(Box::new(crate::file_edit::FileEditTool));
         reg.register(Box::new(crate::grep::GrepTool));
         reg.register(Box::new(crate::glob::GlobTool));
+
+        // Tier 2 — web / session / notebook
+        reg.register(Box::new(crate::web_fetch::WebFetchTool));
+        reg.register(Box::new(crate::web_search::WebSearchTool));
+        reg.register(Box::new(crate::ask_user::AskUserQuestionTool::new()));
+        reg.register(Box::new(crate::todo_write::TodoWriteTool));
+        reg.register(Box::new(crate::notebook_edit::NotebookEditTool));
+
+        // Tier 3 — specialized (enabled ones only)
+        reg.register(Box::new(crate::powershell::PowerShellTool));
+        let pm_state = crate::plan_mode::PlanModeState::new();
+        reg.register(Box::new(crate::plan_mode::EnterPlanModeTool::new(pm_state.clone())));
+        reg.register(Box::new(crate::plan_mode::ExitPlanModeTool::new(pm_state)));
+        reg.register(Box::new(crate::worktree::EnterWorktreeTool));
+        reg.register(Box::new(crate::worktree::ExitWorktreeTool));
+        reg.register(Box::new(crate::task_tools::TaskCreateTool));
+        reg.register(Box::new(crate::task_tools::TaskOutputTool));
+        reg.register(Box::new(crate::task_tools::TaskStopTool));
+        reg.register(Box::new(crate::config_tool::ConfigTool));
+        reg.register(Box::new(crate::synthetic_output::SyntheticOutputTool));
+        reg.register(Box::new(crate::brief::BriefTool));
+        // LspHoverTool / LspDefinitionTool: is_enabled() = false, skip.
+
         reg
     }
 }
