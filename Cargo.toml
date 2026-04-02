@@ -86,6 +86,21 @@ git2 = { version = "0.19", default-features = false }
 # Keychain
 keyring = "3"
 
+# Crypto (OAuth PKCE)
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+hex = "0.4"
+
+# OAuth callback server
+axum = "0.7"
+
+# Open browser
+open = "5"
+
+# Timestamps / TTL
+chrono = { version = "0.4", features = ["serde"] }
+
 # Windows registry (add to individual crate Cargo.toml under [target.'cfg(windows)'.dependencies])
 winreg = "0.52"
 
