@@ -15,3 +15,4 @@ tokio = { workspace = true }
 globset = { workspace = true }
 regex = { workspace = true }
 tracing = { workspace = true }
+dirs-next = { workspace = true }
