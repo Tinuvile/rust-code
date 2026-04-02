@@ -92,6 +92,11 @@ base64 = "0.22"
 rand = "0.8"
 hex = "0.4"
 
+# Async streaming helpers
+futures-util = "0.3"
+async-stream = "0.3"
+bytes = "1"
+
 # OAuth callback server
 axum = "0.7"
 
