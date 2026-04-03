@@ -12,3 +12,12 @@ pub mod executor_prompt;
 pub mod session_hooks;
 pub mod post_sampling;
 pub mod tool_hooks;
+
+// ── Re-exports ────────────────────────────────────────────────────────────────
+
+pub use event::{event_name, HookDecision, HookEvent};
+pub use config::{hooks_for_event, resolve_hooks, HookMap, ResolvedHook};
+pub use registry::HookRegistry;
+pub use session_hooks::run_session_start_hooks;
+pub use post_sampling::run_post_sampling_hooks;
+pub use tool_hooks::{NoopToolHookRunner, PostToolOutcome, PreToolOutcome, ToolHookRunner};

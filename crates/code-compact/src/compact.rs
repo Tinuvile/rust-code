@@ -1,11 +1,19 @@
 //! Context compaction: replace old messages with a model-generated summary.
 //!
-//! Full implementation (Phase 8) calls the API to summarize the conversation.
-//! Phase 6 defines the data structures and a stub that returns an error.
+//! Calls the Anthropic API to summarize the conversation up to a given point,
+//! then returns a minimal replacement message list so the context window can
+//! be reclaimed.
 //!
 //! Ref: src/services/compact/compact.ts
 
-use code_types::message::Message;
+use serde_json::json;
+
+use code_api::client::{AnthropicClient, ApiMessage, ApiRole, MessagesRequest};
+use code_api::retry::RetryPolicy;
+use code_api::tokens::estimate_tokens_json;
+use code_types::message::{ContentBlock, Message, TextBlock, UserMessage};
+
+use crate::prompt::build_summarization_prompt;
 
 // ── Request / Result ──────────────────────────────────────────────────────────
 
@@ -35,19 +43,94 @@ pub struct CompactResult {
     pub tokens_after: u32,
 }
 
-// ── Stub implementation ───────────────────────────────────────────────────────
+// ── Implementation ────────────────────────────────────────────────────────────
 
-/// Compact the conversation by summarizing early messages.
+/// Compact the conversation by having the model summarize it.
 ///
-/// **Phase 6 stub** — returns `Err` with a "not yet implemented" message.
-/// Phase 8 will replace this with a real API call.
+/// Strips UI-only messages, calls the model with a summarization prompt, and
+/// returns a single replacement `Message::User` containing the summary text.
 pub async fn compact_conversation(
-    _request: CompactRequest,
-    _client: &code_api::client::AnthropicClient,
+    request: CompactRequest,
+    client: &AnthropicClient,
 ) -> anyhow::Result<CompactResult> {
-    Err(anyhow::anyhow!(
-        "Context compaction is not yet implemented (planned for Phase 8)."
-    ))
+    let system_prompt = build_summarization_prompt(request.custom_prompt.as_deref());
+
+    // Filter to API-eligible messages only.
+    let api_messages: Vec<ApiMessage> = request
+        .messages
+        .iter()
+        .filter(|m| !m.is_ui_only())
+        .map(|m| match m {
+            Message::User(u) => ApiMessage {
+                role: ApiRole::User,
+                content: u.content.clone(),
+            },
+            Message::Assistant(a) => ApiMessage {
+                role: ApiRole::Assistant,
+                content: a.content.clone(),
+            },
+            // Remaining non-UI messages (Progress, Tombstone, etc.) are omitted.
+            _ => ApiMessage {
+                role: ApiRole::User,
+                content: vec![ContentBlock::text("[omitted]")],
+            },
+        })
+        .collect();
+
+    // Estimate tokens before compaction.
+    let before_value = serde_json::to_value(&api_messages).unwrap_or(json!([]));
+    let tokens_before = estimate_tokens_json(&before_value);
+
+    let summarize_req = MessagesRequest {
+        model: request.model.clone(),
+        messages: api_messages,
+        max_tokens: request.max_summary_tokens,
+        system: Some(json!([{"type": "text", "text": system_prompt}])),
+        tools: vec![],
+        stream: true,
+        temperature: None,
+        thinking: None,
+        top_p: None,
+    };
+
+    let assembled = client.stream(summarize_req, RetryPolicy::default()).await?;
+
+    // Extract the first text block as the summary.
+    let summary = assembled
+        .content
+        .iter()
+        .find_map(|b| {
+            if let ContentBlock::Text(t) = b {
+                Some(t.text.clone())
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| anyhow::anyhow!("summarization model returned no text content"))?;
+
+    // Build the replacement user message.
+    let replacement_text = format!(
+        "This is a summary of our previous conversation:\n\n{summary}"
+    );
+    let replacement_messages = vec![Message::User(UserMessage {
+        uuid: uuid::Uuid::new_v4(),
+        content: vec![ContentBlock::Text(TextBlock {
+            text: replacement_text,
+            cache_control: None,
+        })],
+        is_api_error_message: false,
+        agent_id: None,
+    })];
+
+    let after_value = serde_json::to_value(&replacement_messages).unwrap_or(json!([]));
+    let tokens_after = estimate_tokens_json(&after_value);
+
+    Ok(CompactResult {
+        summary,
+        replacement_messages,
+        tokens_before,
+        tokens_after,
+    })
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -55,7 +138,7 @@ pub async fn compact_conversation(
 /// Estimate whether a compaction is warranted based on token usage.
 ///
 /// Returns `true` if `used_tokens` exceeds `threshold_fraction` of
-/// `context_window`.  Delegates to `code_api::tokens::should_auto_compact`.
+/// `context_window`.
 pub fn should_compact(used_tokens: u32, context_window: u32, threshold: f32) -> bool {
     if context_window == 0 {
         return false;

@@ -1,24 +1,26 @@
-//! `/login` — authenticate with Claude.
+//! `/exit` — exit the CLI.
 
 use async_trait::async_trait;
 
 use crate::{Command, CommandContext, CommandOutput, CommandResult};
 
-pub struct LoginCommand;
+pub struct ExitCommand;
 
 #[async_trait]
-impl Command for LoginCommand {
+impl Command for ExitCommand {
     fn name(&self) -> &str {
-        "login"
+        "exit"
+    }
+
+    fn aliases(&self) -> &[&str] {
+        &["quit", "q"]
     }
 
     fn description(&self) -> &str {
-        "Authenticate with Claude via OAuth."
+        "Exit the CLI."
     }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
-        Ok(CommandOutput::Text(
-            "OAuth login: visit https://claude.ai to authenticate.".to_owned(),
-        ))
+        Ok(CommandOutput::Exit)
     }
 }
