@@ -30,6 +30,11 @@ impl ToolRegistry {
         self.tools.insert(tool.name().to_owned(), tool);
     }
 
+    /// Remove a tool by name.  Returns `true` if a tool was present and removed.
+    pub fn remove(&mut self, name: &str) -> bool {
+        self.tools.remove(name).is_some()
+    }
+
     /// Look up a tool by name (case-sensitive).
     pub fn get(&self, name: &str) -> Option<&dyn Tool> {
         self.tools.get(name).map(|t| t.as_ref())
