@@ -12,3 +12,12 @@ pub mod store;
 
 #[cfg(any(feature = "kairos", feature = "agent_triggers"))]
 pub mod scheduled;
+
+// ── Public re-exports ─────────────────────────────────────────────────────────
+
+pub use task::{TaskId, TaskKind, TaskRecord, TaskStatus};
+pub use store::{SharedTaskStore, TaskStore};
+pub use output::TaskOutput;
+pub use todo::{TodoItem, TodoList, TodoPriority, TodoStatus, todos_path};
+pub use shell_task::spawn_shell_task;
+pub use agent_task::{spawn_agent_task, AgentTaskOptions};
