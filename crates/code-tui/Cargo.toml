@@ -14,6 +14,9 @@ code-config = { workspace = true }
 code-query = { workspace = true }
 code-permissions = { workspace = true }
 code-history = { workspace = true }
+code-commands = { workspace = true }
+futures-util = { workspace = true }
+uuid = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
