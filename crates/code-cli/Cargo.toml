@@ -62,3 +62,5 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+dirs-next = { workspace = true }
+uuid = { workspace = true }

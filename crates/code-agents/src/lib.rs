@@ -17,3 +17,13 @@ pub mod builtin;
 
 #[cfg(feature = "coordinator_mode")]
 pub mod coordinator;
+
+// ── Public re-exports ─────────────────────────────────────────────────────────
+
+pub use definition::{AgentDefinition, AgentSource};
+pub use registry::AgentRegistry;
+pub use runner::{run_agent, AgentRunResult, RunOptions};
+pub use fork::{fork_subagent, ForkOptions};
+pub use resume::{AgentState, default_state_dir};
+pub use color::AgentColorManager;
+pub use builtin::all_builtin_agents;
