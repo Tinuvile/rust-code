@@ -155,6 +155,15 @@ pub struct SettingsJson {
     /// Whether to include attribution trailers in commits.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_co_authors: Option<bool>,
+    /// LLM provider ("anthropic" | "openai" | "gemini" | "deepseek" | "kimi" | "minimax" | "openai-compatible").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// Base URL override for the selected provider.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_base_url: Option<String>,
+    /// Custom environment variable name for the provider's API key.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_api_key_env: Option<String>,
     /// Additional unknown fields preserved for forward-compatibility.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -213,6 +222,9 @@ pub fn merge_settings(base: SettingsJson, overlay: SettingsJson) -> SettingsJson
         max_tokens: overlay.max_tokens.or(base.max_tokens),
         auto_compact_enabled: overlay.auto_compact_enabled.or(base.auto_compact_enabled),
         include_co_authors: overlay.include_co_authors.or(base.include_co_authors),
+        provider: overlay.provider.or(base.provider),
+        provider_base_url: overlay.provider_base_url.or(base.provider_base_url),
+        provider_api_key_env: overlay.provider_api_key_env.or(base.provider_api_key_env),
         extra: {
             let mut m = base.extra;
             m.extend(overlay.extra);

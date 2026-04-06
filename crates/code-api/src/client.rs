@@ -299,6 +299,11 @@ impl AnthropicClient {
     pub async fn session_usage(&self) -> SessionUsage {
         self.usage.read().await.clone()
     }
+
+    /// Return the internal API provider variant for `LlmProvider::kind()`.
+    pub fn provider_variant(&self) -> crate::model::ApiProvider {
+        self.config.provider
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

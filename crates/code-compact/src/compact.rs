@@ -1,6 +1,6 @@
 //! Context compaction: replace old messages with a model-generated summary.
 //!
-//! Calls the Anthropic API to summarize the conversation up to a given point,
+//! Calls the LLM provider to summarize the conversation up to a given point,
 //! then returns a minimal replacement message list so the context window can
 //! be reclaimed.
 //!
@@ -8,10 +8,11 @@
 
 use serde_json::json;
 
-use code_api::client::{AnthropicClient, ApiMessage, ApiRole, MessagesRequest};
-use code_api::retry::RetryPolicy;
 use code_api::tokens::estimate_tokens_json;
-use code_types::message::{ContentBlock, Message, TextBlock, UserMessage};
+use code_types::message::{
+    ApiMessage, ApiRole, ContentBlock, Message, TextBlock, UserMessage,
+};
+use code_types::provider::{LlmProvider, LlmRequest};
 
 use crate::prompt::build_summarization_prompt;
 
@@ -51,7 +52,7 @@ pub struct CompactResult {
 /// returns a single replacement `Message::User` containing the summary text.
 pub async fn compact_conversation(
     request: CompactRequest,
-    client: &AnthropicClient,
+    provider: &dyn LlmProvider,
 ) -> anyhow::Result<CompactResult> {
     let system_prompt = build_summarization_prompt(request.custom_prompt.as_deref());
 
@@ -81,19 +82,21 @@ pub async fn compact_conversation(
     let before_value = serde_json::to_value(&api_messages).unwrap_or(json!([]));
     let tokens_before = estimate_tokens_json(&before_value);
 
-    let summarize_req = MessagesRequest {
+    let llm_request = LlmRequest {
         model: request.model.clone(),
         messages: api_messages,
         max_tokens: request.max_summary_tokens,
         system: Some(json!([{"type": "text", "text": system_prompt}])),
         tools: vec![],
-        stream: true,
         temperature: None,
         thinking: None,
         top_p: None,
     };
 
-    let assembled = client.stream(summarize_req, RetryPolicy::default()).await?;
+    let assembled = provider
+        .send(llm_request)
+        .await
+        .map_err(|e| anyhow::anyhow!("compact API error: {e}"))?;
 
     // Extract the first text block as the summary.
     let summary = assembled

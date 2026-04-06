@@ -93,6 +93,8 @@ pub fn get_max_output_tokens(model: &str) -> u32 {
 
 /// Normalize a model name to its canonical form (strip date suffixes, aliases).
 ///
+/// Supports Anthropic, OpenAI, Gemini, DeepSeek, Kimi, and Minimax aliases.
+///
 /// Ref: src/utils/model/model.ts getCanonicalName
 pub fn canonical_model_name(model: &str) -> String {
     let m = model.trim().to_lowercase();
@@ -100,9 +102,25 @@ pub fn canonical_model_name(model: &str) -> String {
     let m = m.replace("[1m]", "").replace("[1M]", "");
     // Common alias expansions.
     match m.as_str() {
+        // Anthropic
         "sonnet" | "claude-sonnet" => return DEFAULT_MODEL.to_owned(),
         "opus" | "claude-opus" => return DEFAULT_LARGE_MODEL.to_owned(),
         "haiku" | "claude-haiku" => return SMALL_FAST_MODEL.to_owned(),
+        // OpenAI
+        "gpt4o" | "gpt-4o" => return "gpt-4o".to_owned(),
+        "gpt4o-mini" | "gpt-4o-mini" => return "gpt-4o-mini".to_owned(),
+        "o3" => return "o3".to_owned(),
+        "o3-mini" => return "o3-mini".to_owned(),
+        // Gemini
+        "gemini-pro" | "gemini-2.5-pro" => return "gemini-2.5-pro-latest".to_owned(),
+        "gemini-flash" | "gemini-2.5-flash" => return "gemini-2.5-flash-latest".to_owned(),
+        // DeepSeek
+        "deepseek" | "deepseek-chat" => return "deepseek-chat".to_owned(),
+        "deepseek-r1" | "deepseek-reasoner" => return "deepseek-reasoner".to_owned(),
+        // Kimi
+        "kimi" | "moonshot" => return "moonshot-v1-128k".to_owned(),
+        // Minimax
+        "minimax" => return "abab6.5s-chat".to_owned(),
         _ => {}
     }
     m

@@ -18,13 +18,16 @@ use code_tools::orchestration::run_tool_turn;
 use code_tools::{NoopHookRunner, ToolContext, ToolRegistry};
 use code_types::message::{Message, SystemTurnDurationMessage, UserMessage};
 use code_types::permissions::ToolPermissionContext;
+use code_types::provider::{
+    is_tool_use_stop_reason, LlmProvider, ProviderKind, ToolDefinition,
+};
 use code_types::tool::{FileReadingLimits, GlobLimits};
 use uuid::Uuid;
 
 use crate::attribution::SessionAttribution;
 use crate::interruption::InterruptionSignal;
 use crate::message_queue::MessageQueue;
-use crate::messages::{extract_tool_use_blocks, is_tool_use_stop, tool_results_message};
+use crate::messages::{extract_tool_use_blocks, tool_results_message};
 use crate::pipeline::{run_pipeline_turn, PipelineConfig};
 use crate::system_prompt::{build_system_prompt, SystemPromptConfig};
 use crate::token_budget::TokenBudget;
@@ -46,6 +49,8 @@ pub struct QueryEngineConfig {
     pub permission_ctx: ToolPermissionContext,
     /// Optional appendix appended after the base system prompt.
     pub system_appendix: Option<String>,
+    /// Which LLM provider is in use (for stop-reason normalization, etc.).
+    pub provider_kind: ProviderKind,
 }
 
 // ── QueryEngine ───────────────────────────────────────────────────────────────
@@ -54,7 +59,7 @@ pub struct QueryEngineConfig {
 ///
 /// Holds shared state for the duration of a session.
 pub struct QueryEngine {
-    client: code_api::client::AnthropicClient,
+    provider: Arc<dyn LlmProvider>,
     config: QueryEngineConfig,
     queue: MessageQueue,
     interruption: InterruptionSignal,
@@ -66,12 +71,12 @@ pub struct QueryEngine {
 impl QueryEngine {
     /// Create a new `QueryEngine`.
     pub fn new(
-        client: code_api::client::AnthropicClient,
+        provider: Arc<dyn LlmProvider>,
         config: QueryEngineConfig,
     ) -> Self {
         let token_budget = TokenBudget::for_model(&config.model);
         Self {
-            client,
+            provider,
             config: config.clone(),
             queue: MessageQueue::new(),
             interruption: InterruptionSignal::new(),
@@ -133,14 +138,14 @@ impl QueryEngine {
         // Build tool registry.
         let registry = ToolRegistry::with_default_tools(&self.config.cwd);
 
-        // Build API tool list.
-        let api_tools = registry
+        // Build API tool list (unified ToolDefinition format).
+        let api_tools: Vec<ToolDefinition> = registry
             .to_api_tools()
             .into_iter()
-            .map(|t| code_api::client::ApiTool {
+            .map(|t| ToolDefinition {
                 name: t["name"].as_str().unwrap_or("").to_owned(),
                 description: t["description"].as_str().unwrap_or("").to_owned(),
-                input_schema: t["input_schema"].clone(),
+                parameters: t["input_schema"].clone(),
             })
             .collect();
 
@@ -167,6 +172,8 @@ impl QueryEngine {
             retry_policy: code_api::retry::RetryPolicy::default(),
         };
 
+        let provider_kind = self.config.provider_kind;
+
         // ── Main loop ────────────────────────────────────────────────────────
         loop {
             if self.interruption.is_set() {
@@ -175,7 +182,7 @@ impl QueryEngine {
             }
 
             let (assistant_msg, turn_cost) =
-                run_pipeline_turn(conversation, &pipeline_config, &self.client, &self.queue)
+                run_pipeline_turn(conversation, &pipeline_config, &*self.provider, &self.queue)
                     .await?;
 
             // Update token budget.
@@ -192,7 +199,7 @@ impl QueryEngine {
 
             conversation.push(Message::Assistant(assistant_msg.clone()));
 
-            if !is_tool_use_stop(&assistant_msg) {
+            if !is_tool_use_stop_reason(assistant_msg.stop_reason.as_deref(), provider_kind) {
                 // end_turn or max_tokens — done.
                 break;
             }
@@ -273,6 +280,7 @@ pub fn engine_config_from_api_key(
         session_dir,
         permission_ctx: ToolPermissionContext::default(),
         system_appendix: None,
+        provider_kind: ProviderKind::Anthropic,
     };
     (client, config)
 }

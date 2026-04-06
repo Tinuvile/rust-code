@@ -1,7 +1,7 @@
 //! Agent runner: execute an AgentDefinition in an isolated QueryEngine instance.
 //!
 //! Each agent gets its own `QueryEngine` with:
-//!   - The same `AnthropicClient` (shared HTTP connection pool)
+//!   - The same `LlmProvider` (shared HTTP connection pool)
 //!   - A fresh `SessionId` scoped to the sub-task
 //!   - A tool set filtered to `AgentDefinition::tools`
 //!   - The agent's `system_prompt` injected as the `system_appendix`
@@ -17,6 +17,7 @@ use code_query::engine::{QueryEngine, QueryEngineConfig};
 use code_types::ids::SessionId;
 use code_types::message::{ContentBlock, Message, TextBlock, UserMessage};
 use code_types::permissions::{PermissionMode, ToolPermissionContext};
+use code_types::provider::{LlmProvider, ProviderKind};
 
 use crate::definition::AgentDefinition;
 
@@ -34,6 +35,8 @@ pub struct RunOptions {
     pub model: String,
     /// Parent session directory (for tool result storage).
     pub session_dir: std::path::PathBuf,
+    /// Which provider is in use.
+    pub provider_kind: ProviderKind,
 }
 
 // ── AgentRun result ───────────────────────────────────────────────────────────
@@ -58,7 +61,7 @@ pub struct AgentRunResult {
 pub async fn run_agent(
     agent: &AgentDefinition,
     opts: RunOptions,
-    client: code_api::client::AnthropicClient,
+    provider: Arc<dyn LlmProvider>,
 ) -> Result<AgentRunResult> {
     let session_id = SessionId::new();
 
@@ -81,9 +84,10 @@ pub async fn run_agent(
         session_dir: opts.session_dir.clone(),
         permission_ctx,
         system_appendix: Some(agent.system_prompt.clone()),
+        provider_kind: opts.provider_kind,
     };
 
-    let engine = Arc::new(QueryEngine::new(client, engine_config));
+    let engine = Arc::new(QueryEngine::new(provider, engine_config));
     let mut rx = engine.subscribe();
 
     let user_msg = UserMessage {

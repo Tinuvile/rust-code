@@ -11,29 +11,74 @@ use code_types::message::{ContentBlock, Message};
 
 /// Return the context window size (in tokens) for a given model name.
 ///
-/// Falls back to 200 000 (Claude Sonnet 4 default) for unknown models.
+/// Supports Anthropic, OpenAI, Gemini, DeepSeek, Kimi, and Minimax models.
+/// Falls back to 128 000 for unknown models.
 pub fn context_window_for_model(model: &str) -> u32 {
     let lower = model.to_lowercase();
-    if lower.contains("opus") {
-        200_000
-    } else if lower.contains("sonnet") {
-        200_000
-    } else if lower.contains("haiku") {
-        200_000
-    } else {
-        200_000 // safe default
+    // Anthropic
+    if lower.contains("opus") || lower.contains("sonnet") || lower.contains("haiku") {
+        return 200_000;
     }
+    // OpenAI
+    if lower.starts_with("o3") || lower.starts_with("o1") {
+        return 200_000;
+    }
+    if lower.contains("gpt-4o") || lower.contains("gpt-4-turbo") {
+        return 128_000;
+    }
+    // Gemini
+    if lower.contains("gemini") {
+        return 1_000_000;
+    }
+    // DeepSeek
+    if lower.contains("deepseek") {
+        return 64_000;
+    }
+    // Kimi / Moonshot
+    if lower.contains("moonshot") {
+        if lower.contains("128k") { return 128_000; }
+        if lower.contains("32k") { return 32_000; }
+        return 8_000;
+    }
+    // Minimax
+    if lower.contains("abab") {
+        return 245_760;
+    }
+    128_000 // safe default
 }
 
 /// Maximum output tokens for a model.
 pub fn max_output_tokens_for_model(model: &str) -> u32 {
     let lower = model.to_lowercase();
+    // Anthropic
     if lower.contains("claude-3-5") || lower.contains("claude-3-7") {
-        8_192
-    } else {
-        // Claude 4 models support up to 64K output
-        64_000
+        return 8_192;
     }
+    if lower.contains("claude") {
+        return 64_000;
+    }
+    // OpenAI
+    if lower.starts_with("o3") || lower.starts_with("o1") {
+        return 100_000;
+    }
+    if lower.contains("gpt-4o-mini") {
+        return 16_384;
+    }
+    if lower.contains("gpt-4o") || lower.contains("gpt-4-turbo") {
+        return 16_384;
+    }
+    // Gemini
+    if lower.contains("gemini-2.5") {
+        return 65_536;
+    }
+    if lower.contains("gemini") {
+        return 8_192;
+    }
+    // Others
+    if lower.contains("deepseek") || lower.contains("moonshot") || lower.contains("abab") {
+        return 8_192;
+    }
+    16_384 // safe default
 }
 
 // ── Token estimation ──────────────────────────────────────────────────────────

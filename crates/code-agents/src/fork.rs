@@ -6,10 +6,13 @@
 //!
 //! Ref: src/tools/AgentTool/forkSubagent.ts
 
+use std::sync::Arc;
+
 use anyhow::Result;
 
 use code_types::message::Message;
 use code_types::permissions::ToolPermissionContext;
+use code_types::provider::{LlmProvider, ProviderKind};
 
 use crate::definition::AgentDefinition;
 use crate::runner::{run_agent, AgentRunResult, RunOptions};
@@ -30,6 +33,8 @@ pub struct ForkOptions {
     pub model: String,
     /// Session directory for tool results.
     pub session_dir: std::path::PathBuf,
+    /// Which provider is in use.
+    pub provider_kind: ProviderKind,
 }
 
 // ── fork_subagent ─────────────────────────────────────────────────────────────
@@ -42,7 +47,7 @@ pub struct ForkOptions {
 pub async fn fork_subagent(
     agent: &AgentDefinition,
     opts: ForkOptions,
-    client: code_api::client::AnthropicClient,
+    provider: Arc<dyn LlmProvider>,
 ) -> Result<AgentRunResult> {
     // Build a context summary from the inherited conversation.
     let context_summary = summarise_conversation(&opts.inherited_conversation);
@@ -63,9 +68,10 @@ pub async fn fork_subagent(
         cwd: opts.cwd,
         model: opts.model,
         session_dir: opts.session_dir,
+        provider_kind: opts.provider_kind,
     };
 
-    run_agent(agent, run_opts, client).await
+    run_agent(agent, run_opts, provider).await
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

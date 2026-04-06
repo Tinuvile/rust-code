@@ -155,3 +155,106 @@ impl CostTracker {
         *self = Self::default();
     }
 }
+
+// ── Multi-provider pricing ───────────────────────────────────────────────────
+
+/// Look up OpenAI model pricing.
+pub fn get_openai_pricing(model: &str) -> Option<code_types::provider::ModelPricing> {
+    let lower = model.to_lowercase();
+    let p = if lower.contains("gpt-4o-mini") {
+        (0.15, 0.60)
+    } else if lower.contains("gpt-4o") {
+        (2.50, 10.0)
+    } else if lower.starts_with("o3-mini") {
+        (1.10, 4.40)
+    } else if lower.starts_with("o3") {
+        (10.0, 40.0)
+    } else if lower.starts_with("o1-mini") {
+        (3.0, 12.0)
+    } else if lower.starts_with("o1") {
+        (15.0, 60.0)
+    } else if lower.contains("gpt-4-turbo") {
+        (10.0, 30.0)
+    } else {
+        return None;
+    };
+    Some(code_types::provider::ModelPricing {
+        input_per_mtok: p.0,
+        output_per_mtok: p.1,
+        cache_write_per_mtok: 0.0,
+        cache_read_per_mtok: 0.0,
+    })
+}
+
+/// Look up Gemini model pricing.
+pub fn get_gemini_pricing(model: &str) -> Option<code_types::provider::ModelPricing> {
+    let lower = model.to_lowercase();
+    let p = if lower.contains("2.5-pro") {
+        (1.25, 10.0)
+    } else if lower.contains("2.5-flash") {
+        (0.15, 0.60)
+    } else if lower.contains("2.0-flash") {
+        (0.10, 0.40)
+    } else if lower.contains("1.5-pro") {
+        (1.25, 5.0)
+    } else if lower.contains("1.5-flash") {
+        (0.075, 0.30)
+    } else {
+        return None;
+    };
+    Some(code_types::provider::ModelPricing {
+        input_per_mtok: p.0,
+        output_per_mtok: p.1,
+        cache_write_per_mtok: 0.0,
+        cache_read_per_mtok: 0.0,
+    })
+}
+
+/// Look up pricing for OpenAI-compatible providers.
+pub fn get_compat_pricing(
+    model: &str,
+    provider: code_types::provider::ProviderKind,
+) -> Option<code_types::provider::ModelPricing> {
+    use code_types::provider::ProviderKind;
+    let lower = model.to_lowercase();
+    match provider {
+        ProviderKind::DeepSeek => {
+            let p = if lower.contains("reasoner") || lower.contains("r1") {
+                (0.55, 2.19)
+            } else {
+                (0.27, 1.10)
+            };
+            Some(code_types::provider::ModelPricing {
+                input_per_mtok: p.0,
+                output_per_mtok: p.1,
+                cache_write_per_mtok: 0.0,
+                cache_read_per_mtok: 0.0,
+            })
+        }
+        ProviderKind::Kimi => {
+            let p = if lower.contains("128k") {
+                (60.0, 60.0) // ¥60/MTok → approximate USD
+            } else if lower.contains("32k") {
+                (24.0, 24.0)
+            } else {
+                (12.0, 12.0)
+            };
+            // Convert from CNY to approximate USD (1 CNY ≈ 0.14 USD).
+            Some(code_types::provider::ModelPricing {
+                input_per_mtok: p.0 * 0.14,
+                output_per_mtok: p.1 * 0.14,
+                cache_write_per_mtok: 0.0,
+                cache_read_per_mtok: 0.0,
+            })
+        }
+        ProviderKind::Minimax => {
+            Some(code_types::provider::ModelPricing {
+                input_per_mtok: 1.0,
+                output_per_mtok: 1.0,
+                cache_write_per_mtok: 0.0,
+                cache_read_per_mtok: 0.0,
+            })
+        }
+        _ => None,
+    }
+}

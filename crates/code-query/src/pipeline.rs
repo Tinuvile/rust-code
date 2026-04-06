@@ -1,15 +1,15 @@
 //! Single API turn pipeline.
 //!
-//! Takes the current conversation, builds an API request, calls the model,
-//! and returns the assembled `AssistantMessage`.
+//! Takes the current conversation, builds a provider-agnostic `LlmRequest`,
+//! sends it via `LlmProvider::send()`, and returns the assembled `AssistantMessage`.
 //!
 //! Ref: src/utils/queryContext.ts, src/services/api/claude.ts (streamQuery)
 
 use std::time::Instant;
 
-use code_api::client::{AnthropicClient, ApiMessage, ApiTool, MessagesRequest};
+use code_types::message::{ApiMessage, AssistantMessage, ContentBlock, Message, TokenUsage};
+use code_types::provider::{LlmProvider, LlmRequest, ThinkingConfig, ToolDefinition};
 use code_api::retry::RetryPolicy;
-use code_types::message::{AssistantMessage, ContentBlock, Message, TokenUsage};
 use uuid::Uuid;
 
 use crate::attribution::TurnCost;
@@ -25,10 +25,10 @@ pub struct PipelineConfig {
     pub model: String,
     /// System prompt content blocks.
     pub system: Vec<ContentBlock>,
-    /// Tool definitions sent to the model.
-    pub tools: Vec<ApiTool>,
+    /// Tool definitions sent to the model (unified format).
+    pub tools: Vec<ToolDefinition>,
     /// Extended thinking configuration.
-    pub thinking: Option<code_api::client::ThinkingConfig>,
+    pub thinking: Option<ThinkingConfig>,
     /// Retry policy for transient API errors.
     pub retry_policy: RetryPolicy,
 }
@@ -51,30 +51,21 @@ impl PipelineConfig {
 /// Execute one API request turn.
 ///
 /// 1. Normalize `conversation` to API format (strip UI-only messages).
-/// 2. Build a `MessagesRequest`.
-/// 3. Send via `client.stream()` with retry.
+/// 2. Build an `LlmRequest`.
+/// 3. Send via `provider.send()`.
 /// 4. Convert `AssembledResponse` to `AssistantMessage`.
 /// 5. Publish the `AssistantMessage` to `queue`.
 /// 6. Return `(AssistantMessage, TurnCost)`.
 pub async fn run_pipeline_turn(
     conversation: &[Message],
     config: &PipelineConfig,
-    client: &AnthropicClient,
+    provider: &dyn LlmProvider,
     queue: &MessageQueue,
 ) -> anyhow::Result<(AssistantMessage, TurnCost)> {
     let start = Instant::now();
 
     // Normalize messages.
-    let api_messages: Vec<ApiMessage> = normalize_messages_for_api(conversation)
-        .into_iter()
-        .map(|m| ApiMessage {
-            role: match m.role {
-                code_types::message::ApiRole::User => code_api::client::ApiRole::User,
-                code_types::message::ApiRole::Assistant => code_api::client::ApiRole::Assistant,
-            },
-            content: m.content,
-        })
-        .collect();
+    let api_messages: Vec<ApiMessage> = normalize_messages_for_api(conversation);
 
     if api_messages.is_empty() {
         anyhow::bail!("cannot send an empty conversation to the API");
@@ -89,23 +80,22 @@ pub async fn run_pipeline_turn(
         Some(serde_json::to_value(&config.system)?)
     };
 
-    let request = MessagesRequest {
+    let request = LlmRequest {
         model: config.model.clone(),
         messages: api_messages,
         max_tokens,
         system: system_value,
         tools: config.tools.clone(),
-        stream: true,
         temperature: None,
         thinking: config.thinking.clone(),
         top_p: None,
     };
 
-    // Call the API.
-    let assembled = client
-        .stream(request, config.retry_policy.clone())
+    // Call the provider.
+    let assembled = provider
+        .send(request)
         .await
-        .map_err(|e| anyhow::anyhow!("API error: {e:?}"))?;
+        .map_err(|e| anyhow::anyhow!("API error: {e}"))?;
 
     let duration_ms = start.elapsed().as_millis() as u64;
 

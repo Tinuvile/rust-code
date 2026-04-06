@@ -20,3 +20,4 @@ rand = { workspace = true }
 futures-util = { workspace = true }
 async-stream = { workspace = true }
 bytes = { workspace = true }
+uuid = { workspace = true }

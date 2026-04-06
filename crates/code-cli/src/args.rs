@@ -19,6 +19,14 @@ pub struct Cli {
     #[arg(long)]
     pub model: Option<String>,
 
+    /// LLM provider (anthropic, openai, gemini, deepseek, kimi, minimax, openai-compatible)
+    #[arg(long)]
+    pub provider: Option<String>,
+
+    /// Base URL for custom OpenAI-compatible providers
+    #[arg(long)]
+    pub provider_base_url: Option<String>,
+
     /// Replace the default system prompt
     #[arg(long)]
     pub system_prompt: Option<String>,
