@@ -2,8 +2,8 @@
 //!
 //! Priority chain (highest to lowest):
 //! - macOS: Keychain (via `security` CLI) → plaintext fallback
-//! - Windows: `keyring` crate (Credential Manager)
-//! - Linux: plaintext fallback (TODO: libsecret)
+//! - Windows: `keyring` crate (Credential Manager) → plaintext fallback
+//! - Linux: `keyring` crate (Secret Service / libsecret) → plaintext fallback
 //!
 //! Ref: src/utils/secureStorage/index.ts
 //! Ref: src/utils/secureStorage/macOsKeychainStorage.ts
@@ -336,6 +336,57 @@ impl SecureStorage for WindowsKeychainStorage {
     }
 }
 
+// ── Linux keyring (Secret Service / libsecret) ──────────────────────────────
+
+/// Linux Secret Service storage via the `keyring` crate.
+///
+/// Uses D-Bus Secret Service API (backed by GNOME Keyring, KDE Wallet, or
+/// KeePassXC).  If no Secret Service daemon is running (e.g. headless server,
+/// minimal install), the `create_secure_storage` factory falls back to
+/// `PlainTextStorage`.
+#[cfg(target_os = "linux")]
+pub struct LinuxKeyringStorage {
+    entry: keyring::Entry,
+}
+
+#[cfg(target_os = "linux")]
+impl LinuxKeyringStorage {
+    pub fn new() -> anyhow::Result<Self> {
+        let entry = keyring::Entry::new("Code-credentials", "claude-code")?;
+        Ok(Self { entry })
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[async_trait::async_trait]
+impl SecureStorage for LinuxKeyringStorage {
+    fn name(&self) -> &str { "linux-secret-service" }
+
+    async fn read(&self) -> anyhow::Result<Option<StoredCredentials>> {
+        match self.entry.get_password() {
+            Ok(s) => Ok(serde_json::from_str(&s).ok()),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(anyhow::anyhow!("keyring read: {e}")),
+        }
+    }
+
+    async fn write(&self, data: &StoredCredentials) -> anyhow::Result<WriteResult> {
+        let json = serde_json::to_string(data)?;
+        self.entry
+            .set_password(&json)
+            .map_err(|e| anyhow::anyhow!("keyring write: {e}"))?;
+        Ok(WriteResult::ok())
+    }
+
+    async fn delete(&self) -> anyhow::Result<bool> {
+        match self.entry.delete_credential() {
+            Ok(()) => Ok(true),
+            Err(keyring::Error::NoEntry) => Ok(false),
+            Err(e) => Err(anyhow::anyhow!("keyring delete: {e}")),
+        }
+    }
+}
+
 // ── FallbackStorage ───────────────────────────────────────────────────────────
 
 /// Combinator: try `primary`, fall back to `secondary` on failure.
@@ -404,7 +455,8 @@ impl SecureStorage for FallbackStorage {
 ///
 /// - macOS: `FallbackStorage(MacOsKeychainStorage, PlainTextStorage)`
 /// - Windows: `FallbackStorage(WindowsKeychainStorage, PlainTextStorage)`
-/// - Linux: `PlainTextStorage`
+/// - Linux: `FallbackStorage(LinuxKeyringStorage, PlainTextStorage)`
+/// - Other: `PlainTextStorage`
 pub fn create_secure_storage() -> Arc<dyn SecureStorage> {
     #[cfg(target_os = "macos")]
     {
@@ -428,7 +480,25 @@ pub fn create_secure_storage() -> Arc<dyn SecureStorage> {
         }
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(target_os = "linux")]
+    {
+        match LinuxKeyringStorage::new() {
+            Ok(linux) => {
+                let primary: Arc<dyn SecureStorage> = Arc::new(linux);
+                let secondary: Arc<dyn SecureStorage> = Arc::new(PlainTextStorage);
+                Arc::new(FallbackStorage::new(primary, secondary))
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Linux Secret Service unavailable ({e}), using plaintext storage. \
+                     Install gnome-keyring or KDE Wallet for secure credential storage."
+                );
+                Arc::new(PlainTextStorage)
+            }
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
         Arc::new(PlainTextStorage)
     }

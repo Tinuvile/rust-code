@@ -16,3 +16,5 @@ globset = { workspace = true }
 regex = { workspace = true }
 tracing = { workspace = true }
 dirs-next = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }

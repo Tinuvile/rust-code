@@ -77,6 +77,81 @@ impl PermissionEvaluator {
         Self { cwd }
     }
 
+    /// Evaluate with auto-mode classifier support.
+    ///
+    /// If the synchronous evaluator returns `Ask` and the permission mode is
+    /// `Auto`, this method runs the LLM-based auto-classifier before returning.
+    /// If the classifier approves, returns `Allow`; otherwise returns the
+    /// original `Ask` decision for the caller (TUI) to handle.
+    pub async fn evaluate_auto(
+        &self,
+        call: &ToolCallContext<'_>,
+        ctx: &ToolPermissionContext,
+        denial_state: &DenialTrackingState,
+        provider: Option<&dyn code_types::provider::LlmProvider>,
+        model: &str,
+        conversation: &[code_types::message::Message],
+        classifier_config: &crate::auto_classifier::ClassifierConfig,
+    ) -> PermissionDecision {
+        let decision = self.evaluate(call, ctx, denial_state);
+
+        // Only intercept Ask decisions when Auto mode is active.
+        if ctx.mode != PermissionMode::Auto {
+            return decision;
+        }
+        if !matches!(decision, PermissionDecision::Ask(_)) {
+            return decision;
+        }
+
+        let Some(provider) = provider else {
+            return decision;
+        };
+
+        // Run the async classifier.
+        match crate::auto_classifier::classify_tool_call(
+            provider,
+            model,
+            call.tool_name,
+            call.content,
+            call.input,
+            conversation,
+            &self.cwd,
+            classifier_config,
+        )
+        .await
+        {
+            Some(result) if result.allow => {
+                tracing::debug!(
+                    "auto-classifier approved '{}': {}",
+                    call.tool_name,
+                    result.reasoning
+                );
+                PermissionDecision::Allow(PermissionAllowDecision {
+                    decision_reason: Some(PermissionDecisionReason::Other {
+                        reason: format!("Auto-classifier: {}", result.reasoning),
+                    }),
+                    ..Default::default()
+                })
+            }
+            Some(result) => {
+                tracing::debug!(
+                    "auto-classifier blocked '{}': {}",
+                    call.tool_name,
+                    result.reasoning
+                );
+                // Return the original Ask so the user can still approve.
+                decision
+            }
+            None => {
+                tracing::debug!(
+                    "auto-classifier failed for '{}', falling back to Ask",
+                    call.tool_name
+                );
+                decision
+            }
+        }
+    }
+
     /// Evaluate whether `call` is permitted given `ctx`.
     ///
     /// Returns a `PermissionDecision` (Allow / Ask / Deny).

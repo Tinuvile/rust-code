@@ -12,3 +12,4 @@ pub mod dangerous_patterns;
 pub mod path_validation;
 pub mod denial_tracking;
 pub mod persistence;
+pub mod auto_classifier;
