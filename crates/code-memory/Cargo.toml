@@ -19,3 +19,5 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 dirs-next = { workspace = true }
+regex = { workspace = true }
+uuid = { workspace = true }

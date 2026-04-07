@@ -31,3 +31,7 @@ tracing = { workspace = true }
 dirs-next = { workspace = true }
 futures-util = { workspace = true }
 reqwest = { workspace = true }
+which = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

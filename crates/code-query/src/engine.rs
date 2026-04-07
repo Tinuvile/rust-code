@@ -161,6 +161,10 @@ impl QueryEngine {
             cwd: self.config.cwd.clone(),
             appendix: self.config.system_appendix.clone(),
             extended_thinking: false,
+            is_agent: false,
+            agent_name: None,
+            agent_system_prompt: None,
+            provider_kind: self.config.provider_kind,
         };
         let system = build_system_prompt(&prompt_config, &memory_entries).await;
 

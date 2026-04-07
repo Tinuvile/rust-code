@@ -4,6 +4,7 @@
 
 pub mod error;
 pub mod ids;
+pub mod image;
 pub mod message;
 pub mod permissions;
 pub mod provider;

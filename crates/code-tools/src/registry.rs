@@ -106,7 +106,15 @@ impl ToolRegistry {
         reg.register(Box::new(crate::config_tool::ConfigTool));
         reg.register(Box::new(crate::synthetic_output::SyntheticOutputTool));
         reg.register(Box::new(crate::brief::BriefTool));
-        // LspHoverTool / LspDefinitionTool: is_enabled() = false, skip.
+        // LSP tools — enabled only when a language server is found in PATH.
+        let lsp_hover = crate::lsp::LspHoverTool;
+        if lsp_hover.is_enabled() {
+            reg.register(Box::new(lsp_hover));
+        }
+        let lsp_def = crate::lsp::LspDefinitionTool;
+        if lsp_def.is_enabled() {
+            reg.register(Box::new(lsp_def));
+        }
 
         reg
     }

@@ -20,4 +20,4 @@ pub use store::{SharedTaskStore, TaskStore};
 pub use output::TaskOutput;
 pub use todo::{TodoItem, TodoList, TodoPriority, TodoStatus, todos_path};
 pub use shell_task::spawn_shell_task;
-pub use agent_task::{spawn_agent_task, AgentTaskOptions};
+pub use agent_task::{spawn_agent_task, AgentExecutor, AgentRunOutput, AgentTaskOptions};
