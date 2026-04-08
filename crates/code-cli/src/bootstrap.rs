@@ -133,7 +133,10 @@ pub async fn run(cli: Cli) -> Result<()> {
 
     let engine = Arc::new(QueryEngine::new(provider, engine_config));
 
-    // ── Phase 10: Dispatch ────────────────────────────────────────────────────
+    // ── Phase 10: Background update check ──────────────────────────────────────
+    crate::update_check::spawn_update_check();
+
+    // ── Phase 11: Dispatch ────────────────────────────────────────────────────
     if cli.print || cli.command.is_some() {
         crate::output::run_non_interactive(cli, engine, command_registry, settings).await
     } else {

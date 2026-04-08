@@ -7,6 +7,7 @@ mod bootstrap;
 mod output;
 mod mcp_server;
 mod telemetry;
+mod update_check;
 
 use anyhow::Result;
 use tracing_subscriber::EnvFilter;
