@@ -8,6 +8,7 @@ pub mod mode;
 pub mod rule;
 pub mod rule_parser;
 pub mod bash_classifier;
+pub mod bash_llm_classifier;
 pub mod dangerous_patterns;
 pub mod path_validation;
 pub mod denial_tracking;

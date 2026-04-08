@@ -80,9 +80,15 @@ impl PermissionEvaluator {
     /// Evaluate with auto-mode classifier support.
     ///
     /// If the synchronous evaluator returns `Ask` and the permission mode is
-    /// `Auto`, this method runs the LLM-based auto-classifier before returning.
-    /// If the classifier approves, returns `Allow`; otherwise returns the
-    /// original `Ask` decision for the caller (TUI) to handle.
+    /// `Auto`, this method runs the LLM-based classifiers before returning:
+    ///
+    /// 1. **Bash tool calls**: Uses the specialized bash LLM classifier first
+    ///    for semantic command analysis.  If it returns `Allow`, the tool runs.
+    ///    If it returns `Deny`, the tool is blocked.  If it returns `Ask` or
+    ///    fails, falls through to the general classifier.
+    ///
+    /// 2. **All tool calls**: The general auto-classifier provides a second
+    ///    opinion considering conversation context and permission rules.
     pub async fn evaluate_auto(
         &self,
         call: &ToolCallContext<'_>,
@@ -107,7 +113,88 @@ impl PermissionEvaluator {
             return decision;
         };
 
-        // Run the async classifier.
+        // ── Stage A: Bash-specific LLM classifier ───────────────────────────
+        //
+        // For Bash/PowerShell tool calls, the pattern-matching classifier
+        // returned `Write` (ambiguous).  Use the LLM for semantic analysis.
+        if is_bash_tool(call.tool_name) {
+            if let Some(command) = call.content {
+                match crate::bash_llm_classifier::classify_bash_llm(
+                    provider,
+                    model,
+                    command,
+                    &self.cwd,
+                    None,
+                )
+                .await
+                {
+                    Some(result) => {
+                        use crate::bash_llm_classifier::BashLlmDecision;
+                        match result.decision {
+                            BashLlmDecision::Allow => {
+                                tracing::debug!(
+                                    "bash LLM classifier approved: [{}] {}",
+                                    result.category,
+                                    result.reasoning
+                                );
+                                return PermissionDecision::Allow(PermissionAllowDecision {
+                                    decision_reason: Some(PermissionDecisionReason::Other {
+                                        reason: format!(
+                                            "Bash classifier [{}]: {}",
+                                            result.category, result.reasoning
+                                        ),
+                                    }),
+                                    ..Default::default()
+                                });
+                            }
+                            BashLlmDecision::Deny => {
+                                tracing::debug!(
+                                    "bash LLM classifier denied: [{}] {}",
+                                    result.category,
+                                    result.reasoning
+                                );
+                                return PermissionDecision::Deny(PermissionDenyDecision {
+                                    message: format!(
+                                        "Bash classifier blocked: {}",
+                                        result.reasoning
+                                    ),
+                                    decision_reason: PermissionDecisionReason::SafetyCheck {
+                                        reason: format!(
+                                            "Bash LLM classifier [{}]: {}",
+                                            result.category, result.reasoning
+                                        ),
+                                        classifier_approvable: true,
+                                    },
+                                });
+                            }
+                            BashLlmDecision::Ask => {
+                                tracing::debug!(
+                                    "bash LLM classifier deferred to Ask: [{}] {}",
+                                    result.category,
+                                    result.reasoning
+                                );
+                                // Fall through to general classifier.
+                            }
+                        }
+                    }
+                    None => {
+                        tracing::debug!(
+                            "bash LLM classifier failed, falling through to general classifier"
+                        );
+                        // Fall through to general classifier.
+                    }
+                }
+            }
+        }
+
+        // ── Stage B: General auto-classifier ─────────────────────────────────
+        //
+        // Enrich config with bash-specific descriptions if this is a bash call.
+        let mut enriched_config = classifier_config.clone();
+        if is_bash_tool(call.tool_name) {
+            crate::bash_llm_classifier::enrich_classifier_config(&mut enriched_config);
+        }
+
         match crate::auto_classifier::classify_tool_call(
             provider,
             model,
@@ -116,7 +203,7 @@ impl PermissionEvaluator {
             call.input,
             conversation,
             &self.cwd,
-            classifier_config,
+            &enriched_config,
         )
         .await
         {
